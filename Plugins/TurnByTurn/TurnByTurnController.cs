@@ -33,15 +33,7 @@ namespace Server.Plugins.TurnByTurn
            
         }
 
-        public Task SendAction(RequestContext<IScenePeerClient> ctx)
-        {
-
-        }
-
-        public Task SendEndTurn(RequestContext<IScenePeerClient> ctx)
-        {
-
-        }
+      
 
 
     }
