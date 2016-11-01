@@ -21,8 +21,6 @@ namespace Server.Plugins.TurnByTurn
         private const string SEND_ACTION_RPC = "turnbyturn.sendaction";
         private const string SETUP_GAME_RPC = "turbByTurn.setupGame";
 
-        private const string SEND_ENDTURN_RPC = "turnbyturn.sendendturn";
-      
         private readonly ILogger _logger;
 
         public TurnByTurnController( ILogger logger)
