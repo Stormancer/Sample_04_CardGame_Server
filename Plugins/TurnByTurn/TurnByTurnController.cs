@@ -10,6 +10,7 @@ using Stormancer;
 using Stormancer.Plugins;
 using Stormancer.Diagnostics;
 using Newtonsoft.Json.Linq;
+using MsgPack.Serialization;
 
 namespace Server.Plugins.TurnByTurn
 {
@@ -50,8 +51,11 @@ namespace Server.Plugins.TurnByTurn
 
     public class TransactionDto
     {
+        [MessagePackMember(0)]
         public string PlayerId { get; set; }
+        [MessagePackMember(1)]
         public string Command { get; set; }
+        [MessagePackMember(2)]
         public string Args { get; set; }
 
     }

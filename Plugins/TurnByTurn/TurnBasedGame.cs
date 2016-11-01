@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Stormancer;
+using MsgPack.Serialization;
 
 namespace Server.Plugins.TurnByTurn
 {
@@ -20,7 +21,7 @@ namespace Server.Plugins.TurnByTurn
     {
         public const string ENDTURN_CMD = "#endturn";
 
-        public const string VALIDATE_TRANSACTION_RPC = "tbt.transaction";
+        public const string VALIDATE_TRANSACTION_RPC = "transaction.execute";
         public const string DESYNCHRONIZATION_ROUTE = "tbt.desync";
         public const string REPLAY_TRANSACTION_LOG_RPC = "tbt.replayTLog";
 
@@ -115,10 +116,10 @@ namespace Server.Plugins.TurnByTurn
             var cmd = new TransactionCommand
             {
                 Cmd = command,
-                Arguments = args,
+                Arguments = args.ToString(),
                 CreatedOn = DateTime.UtcNow,
-                PlayerId = playerId,
-                UserId = userId,
+                IssuerPlayerId = playerId,
+                IssuerUserId = userId,
                 FinalStepId = CurrrentStepId++
             };
 
@@ -191,21 +192,29 @@ namespace Server.Plugins.TurnByTurn
     }
     public class TransactionCommand
     {
+        [MessagePackMember(0)]
         public int FinalStepId { get; set; }
 
+        [MessagePackMember(1)]
         public DateTime CreatedOn { get; set; }
 
-        public string UserId { get; set; }
-        public string PlayerId { get; set; }
+        [MessagePackMember(2)]
+        public string IssuerUserId { get; set; }
+        [MessagePackMember(3)]
+        public string IssuerPlayerId { get; set; }
+        [MessagePackMember(4)]
         public string Cmd { get; set; }
-
-        public JObject Arguments { get; set; }
+        [MessagePackMember(5)]
+        public string Arguments { get; set; }
     }
 
     public class TransactionResponse
     {
+        [MessagePackMember(0)]
         public bool Success { get; set; }
-
+        [MessagePackMember(1)]
+        public string Reason { get; set; }
+        [MessagePackMember(2)]
         public int Hash { get; set; }
 
         public override bool Equals(object obj)
