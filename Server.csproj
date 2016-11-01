@@ -120,6 +120,7 @@
     <Compile Include="AsyncLock.cs" />
     <Compile Include="Extensions\EnumerableExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="GameSessionEventHandler.cs" />
     <Compile Include="Matchmaking\DataExtractor.cs" />
     <Compile Include="Matchmaking\Dto\MatchmakingRequest.cs" />
     <Compile Include="Matchmaking\Dto\MatchmakingResponse.cs" />

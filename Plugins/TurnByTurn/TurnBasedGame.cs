@@ -84,22 +84,34 @@ namespace Server.Plugins.TurnByTurn
         /// <param name="args"></param>
         /// <param name="updatedGameHash"></param>
         /// <returns></returns>
-        public Task ExecuteTransaction(string userId, string playerId, string command, JObject args)
+        public Task SubmitTransaction(string userId, string playerId, string command, JObject args)
         {
-
-            string u;
-            if (!PlayerMap.TryGetValue(playerId, out u))
+            if (userId != null)
             {
-                throw new InvalidOperationException("The user is not in the PlayerMap");
+                if(playerId == null)
+                {
+                    throw new ClientException("Missing playerId");
+                }
+                string u;
+                
+                if (!PlayerMap.TryGetValue(playerId, out u))
+                {
+                    throw new InvalidOperationException("The user is not in the PlayerMap");
+                }
+                if (u != userId)
+                {
+                    throw new InvalidOperationException("The user cannot handler the specified playerId");
+                }
+                if (!_players.ContainsKey(userId))
+                {
+                    throw new InvalidOperationException("The user is not connected");
+                }
             }
-            if (u != userId)
+            if(command == null)
             {
-                throw new InvalidOperationException("The user cannot handler the specified playerId");
+                throw new ClientException("Missing command");
             }
-            if (!_players.ContainsKey(userId))
-            {
-                throw new InvalidOperationException("The user is not connected");
-            }
+            
             var cmd = new TransactionCommand
             {
                 Cmd = command,
@@ -110,10 +122,10 @@ namespace Server.Plugins.TurnByTurn
                 FinalStepId = CurrrentStepId++
             };
 
-            return DoTransaction(cmd);
+            return SubmitTransaction(cmd);
 
         }
-        private async Task DoTransaction(TransactionCommand cmd)
+        private async Task SubmitTransaction(TransactionCommand cmd)
         {
             using (await _transactionLock.LockAsync())
             {

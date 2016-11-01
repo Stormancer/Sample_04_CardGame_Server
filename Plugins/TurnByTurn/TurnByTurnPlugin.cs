@@ -14,7 +14,7 @@ namespace Server.Plugins.TurnByTurn
 {
     class TurnByTurnPlugin : IHostPlugin
     {
-        internal const string METADATA_KEY = "stormancer.turnByTurn";
+        public const string METADATA_KEY = "stormancer.turnByTurn";
 
         public void Build(HostPluginBuildContext ctx)
         {
@@ -22,14 +22,22 @@ namespace Server.Plugins.TurnByTurn
               {
            
                   builder.Register<TurnByTurnController>().InstancePerRequest();
-               
-              };
+                 
 
+              };
+            ctx.SceneDependenciesRegistration += (IDependencyBuilder builder, ISceneHost scene) =>
+              {
+                  if(scene.Metadata.ContainsKey(METADATA_KEY))
+                  {
+                      builder.Register<TurnBasedGame>().InstancePerScene();
+                  }
+              };
             ctx.SceneCreated += (ISceneHost scene) =>
              {
                  if (scene.Metadata.ContainsKey(METADATA_KEY))
                  {
                      scene.AddController<TurnByTurnController>();
+                     
                  }
              };
         }

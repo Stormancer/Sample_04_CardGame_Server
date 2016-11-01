@@ -47,7 +47,10 @@ namespace Server.Profiles
 
             var client = await _client.CreateClient(_indexName);
 
-            var profiles = await client.SearchAsync<PlayerProfile>(desc => desc.Query(q => q.Terms(tq => tq.Terms(deletedUsers.Select(u => u.Id)).Field(p => p.PlayerId).MinimumShouldMatch(1))));
+            var profiles = await client.SearchAsync<PlayerProfile>(desc => desc.Query(q => q.Terms(tq => tq
+                .Terms(deletedUsers.Select(u => u.Id))
+                .Field(p => p.PlayerId)
+               )));
 
             return profiles.Documents.ToList();
 
