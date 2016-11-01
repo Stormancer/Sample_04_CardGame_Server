@@ -21,7 +21,7 @@ namespace Server.Plugins.TurnByTurn
             ctx.HostDependenciesRegistration += (IDependencyBuilder builder) =>
               {
            
-                  builder.Register<TurnByTurnController>().InstancePerRequest();
+                  builder.Register<TransactionController>().InstancePerRequest();
                  
 
               };
@@ -36,7 +36,7 @@ namespace Server.Plugins.TurnByTurn
              {
                  if (scene.Metadata.ContainsKey(METADATA_KEY))
                  {
-                     scene.AddController<TurnByTurnController>();
+                     scene.AddController<TransactionController>();
                      
                  }
              };

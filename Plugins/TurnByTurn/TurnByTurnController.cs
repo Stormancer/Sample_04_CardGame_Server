@@ -15,18 +15,15 @@ namespace Server.Plugins.TurnByTurn
 {
  
 
-    public class TurnByTurnController : ControllerBase
+    public class TransactionController : ControllerBase
     {
 
-        private const string TURN_STATE_CHANGED_ROUTE = "turnbyturn.turnStateChanged";
-        private const string SEND_ACTION_RPC = "turnbyturn.sendaction";
-        private const string SETUP_GAME_RPC = "turbByTurn.setupGame";
 
         private readonly ILogger _logger;
         private readonly TurnBasedGame _game;
         private readonly IUserSessions _sessions;
 
-        public TurnByTurnController( ILogger logger, TurnBasedGame game, IUserSessions sessions)
+        public TransactionController( ILogger logger, TurnBasedGame game, IUserSessions sessions)
         {
             _logger = logger;
             _game = game;
@@ -36,7 +33,7 @@ namespace Server.Plugins.TurnByTurn
         }
 
       
-        public async Task SubmitTransaction(RequestContext<IScenePeerClient> ctx)
+        public async Task Submit(RequestContext<IScenePeerClient> ctx)
         {
             var userId = (await _sessions.GetUser(ctx.RemotePeer))?.Id;
 

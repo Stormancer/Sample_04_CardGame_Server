@@ -88,12 +88,12 @@ namespace Server.Plugins.TurnByTurn
         {
             if (userId != null)
             {
-                if(playerId == null)
+                if (playerId == null)
                 {
                     throw new ClientException("Missing playerId");
                 }
                 string u;
-                
+
                 if (!PlayerMap.TryGetValue(playerId, out u))
                 {
                     throw new InvalidOperationException("The user is not in the PlayerMap");
@@ -107,11 +107,11 @@ namespace Server.Plugins.TurnByTurn
                     throw new InvalidOperationException("The user is not connected");
                 }
             }
-            if(command == null)
+            if (command == null)
             {
                 throw new ClientException("Missing command");
             }
-            
+
             var cmd = new TransactionCommand
             {
                 Cmd = command,
@@ -125,6 +125,7 @@ namespace Server.Plugins.TurnByTurn
             return SubmitTransaction(cmd);
 
         }
+
         private async Task SubmitTransaction(TransactionCommand cmd)
         {
             using (await _transactionLock.LockAsync())
@@ -134,26 +135,31 @@ namespace Server.Plugins.TurnByTurn
                 {
                     IScenePeerClient peer = null;
                     _players.TryGetValue(p.Value, out peer);
-
+                    TransactionResponse response = null;
                     if (peer != null)
                     {
-                        var r = await peer.RpcTask<TransactionCommand, TransactionResponse>(VALIDATE_TRANSACTION_RPC, cmd);
-                        return Tuple.Create(p.Key, (int?)r.Hash);
+                        try
+                        {
+                            var r = await peer.RpcTask<TransactionCommand, TransactionResponse>(VALIDATE_TRANSACTION_RPC, cmd);
+                            r.Success = true;
+                            response = r;
+                        }
+                        catch (Exception)//Failed to execute transaction update on client
+                        {
+                            response =  new TransactionResponse { Success = false };
+                        }
                     }
-                    else
-                    {
-                        return Tuple.Create(p.Key, (int?)null);
-                    }
+                    return Tuple.Create(p.Key, response);
                 }));
-
-                var isValid = responses.Where(t => t.Item2.HasValue).Select(t => t.Item2.Value).Distinct().Count() == 1;
+                var receivedResponses = responses.Where(t => t.Item2 != null);
+                var isValid = receivedResponses.All(t=>t.Item2.Success) && receivedResponses.Select(t => t.Item2).Distinct().Count() == 1;
 
                 if (!isValid)
                 {
                     await EnsureTransactionFailed($"game states hash comparaison failed: [{string.Join(", ", responses.Select(t => $"'{t.Item1}' => {t.Item2}"))}]");
                 }
 
-                _commands.Add(new TransactionLogItem { Command = cmd, ResultHash = responses.FirstOrDefault(r => r.Item2.HasValue).Item2??0 });
+                _commands.Add(new TransactionLogItem { Command = cmd, ResultHash = responses.FirstOrDefault(r => r.Item2!=null)?.Item2.Hash ?? 0 });
 
 
             }
@@ -198,6 +204,8 @@ namespace Server.Plugins.TurnByTurn
 
     public class TransactionResponse
     {
+        public bool Success { get; set; }
+
         public int Hash { get; set; }
 
         public override bool Equals(object obj)
