@@ -233,6 +233,11 @@
     <Compile Include="Plugins\Steam\SteamService.cs" />
     <Compile Include="Plugins\Steam\SteamUserTicketAuthenticator.cs" />
     <Compile Include="Plugins\Steam\SteamUserTicketAuthenticatorMockup.cs" />
+    <Compile Include="Plugins\TurnByTurn\App.cs" />
+    <Compile Include="Plugins\TurnByTurn\TurnBasedGame.cs" />
+    <Compile Include="Plugins\TurnByTurn\TurnByTurnController.cs" />
+    <Compile Include="Plugins\TurnByTurn\TurnByTurnExtensions.cs" />
+    <Compile Include="Plugins\TurnByTurn\TurnByTurnPlugin.cs" />
     <Compile Include="Plugins\Users\AdminImpersonationAuthenticationProvider.cs" />
     <Compile Include="Plugins\Users\AdminWebApiConfig.cs" />
     <Compile Include="Plugins\Users\AuthenticatorResult.cs" />
@@ -272,7 +277,6 @@
     <Content Include="Assets\Admin\users\Index.html" />
     <Content Include="Assets\Admin\users\users-list.component.js" />
     <Content Include="Assets\Admin\users\users-list.template.html" />
-    <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="Plugins\AdminApi\_references.json" />
     <None Include="Plugins\Database\_references.json" />
@@ -281,7 +285,9 @@
     <None Include="Profiles\_references.json" />
     <None Include="_app.json" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Plugins\Friends\" />
+  </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\Admin\serials\Index.html" />
     <Content Include="Assets\Admin\serials\App.js" />
