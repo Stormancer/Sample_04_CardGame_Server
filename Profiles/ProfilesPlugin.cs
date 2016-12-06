@@ -11,6 +11,8 @@ using Nest;
 using Server.Users;
 using Stormancer;
 using Stormancer.Diagnostics;
+using Stormancer.Core;
+using Server.Plugins.TurnByTurn;
 
 namespace Server.Profiles
 {
@@ -24,7 +26,13 @@ namespace Server.Profiles
                
                 builder.Register<ProfilesUserEventHandler>().As<IUserEventHandler>();
             };
-
+            ctx.SceneDependenciesRegistration += (IDependencyBuilder builder, ISceneHost scene) =>
+              {
+                  if(scene.Metadata.ContainsKey(TurnByTurnPlugin.METADATA_KEY))
+                  {
+                      builder.Register<GameSessionEventHandler>().InstancePerScene();
+                  }
+              };
 
             ctx.HostStarted += (IHost host) =>
             {

@@ -33,44 +33,36 @@ namespace Server
                 b.Register<DataExtractor>().As<IMatchmakingDataExtractor>();
                 b.Register<Matchmaker>().As<IMatchmaker>();
                 b.Register<MatchmakingResolver>().As<IMatchmakingResolver>();
-                b.Register<RulesService>(resolver => new RulesService(resolver.Resolve<ILogger>(), p => p.GMMR));
+                b.Register<RulesService>(resolver => new RulesService(resolver.Resolve<ILogger>(), p => 0));//Everyone is at MMR 0
             });
-            var rankedMatchMakingConfig = new MatchmakingConfig("ranked", b =>
-            {
-                b.Register<DataExtractor>().As<IMatchmakingDataExtractor>();
-                b.Register<Matchmaker>().As<IMatchmaker>();
-                b.Register<MatchmakingResolver>().As<IMatchmakingResolver>();
-                b.Register<RulesService>(resolver => new RulesService(resolver.Resolve<ILogger>(), p => p.RMMR));
-            });
+           
 
             builder.SceneTemplate("main", scene =>
             {
                 scene.AddController<ProfilesController>();
                 scene.Metadata["stormancer.profiles"] = "enabled";
-                scene.AddPeerMessaging();
+               
                 //scene.AddNatPunchthrough();
-                scene.AddLogsServer();
-                scene.AddGameVersion();
-                scene.AddLeaderboard();
-                scene.AddAnalytics();
+               
+                //scene.AddGameVersion();
+                //scene.AddLeaderboard();
+                //scene.AddAnalytics();
 
             });
 
             builder.SceneTemplate(GAMESESSION_SCENE_TYPE, scene =>
             {
+                
                 scene.AddGameSession();
                 scene.AddChat();
+                scene.AddTurnByTurn();
             });
 
             builder.SceneTemplate("matchmaker-fast", scene =>
              {
                  scene.AddMatchmaking(fastMatchMakingConfig);
              });
-            builder.SceneTemplate("matchmaker-ranked", scene =>
-            {
-                scene.AddMatchmaking(rankedMatchMakingConfig);
-                
-            });
+         
 
            
             builder.AdminPlugin("users").Name("Users");
@@ -81,7 +73,7 @@ namespace Server
 
             builder.AddPlugin(new UsersManagementPlugin(userConfig));
 
-            builder.AddPlugin(new ProfilesPlugin());
+           
         }
     }
 }
