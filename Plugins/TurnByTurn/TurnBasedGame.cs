@@ -136,6 +136,10 @@ namespace Server.Plugins.TurnByTurn
                 {
                     IScenePeerClient peer = null;
                     _players.TryGetValue(p.Value, out peer);
+                    _logger.Log(LogLevel.Debug, "gameSession", "Transaction submitted.", new {
+                        map = PlayerMap,
+                        players = _players.ToDictionary(kvp=>kvp.Key, kvp=>kvp.Value.Id)
+                    });
                     TransactionResponse response = null;
                     if (peer != null)
                     {
@@ -153,14 +157,19 @@ namespace Server.Plugins.TurnByTurn
                     return Tuple.Create(p.Key, response);
                 }));
                 var receivedResponses = responses.Where(t => t.Item2 != null);
-                var isValid = receivedResponses.All(t => t.Item2.Success) && receivedResponses.Select(t => t.Item2).Distinct().Count() == 1;
+
+                var isValid = true;
+                if (receivedResponses.Any())
+                {
+                    isValid = receivedResponses.All(t => t.Item2.Success) && receivedResponses.Select(t => t.Item2).Distinct().Count() == 1;
+                }
 
                 if (!isValid)
                 {
                     await EnsureTransactionFailed($"game states hash comparaison failed: [{string.Join(", ", responses.Select(t => $"'{t.Item1}' => {t.Item2}"))}]");
                 }
                 var hash = responses.FirstOrDefault(r => r.Item2 != null)?.Item2.Hash;
-                _commands.Add(new TransactionLogItem { Command = cmd, ResultHash = hash ?? 0, HashAvailable = hash.HasValue  });
+                _commands.Add(new TransactionLogItem { Command = cmd, ResultHash = hash ?? 0, HashAvailable = hash.HasValue });
 
 
             }
