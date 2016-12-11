@@ -25,6 +25,7 @@ namespace Server.Plugins.GameSession
                   if (scene.Metadata.ContainsKey(METADATA_KEY))
                   {
                       builder.Register<GameSessionService>().As<IGameSessionService>().SingleInstance();
+                      builder.Register<GameSessionController>().InstancePerRequest();
                   }
               };
             ctx.HostStarted += (IHost host) =>

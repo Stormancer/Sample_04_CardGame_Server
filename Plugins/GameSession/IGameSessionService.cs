@@ -11,6 +11,7 @@ namespace Server.Plugins.GameSession
     public interface IGameSessionService
     {
         void SetConfiguration(dynamic metadata);
-        Task PostResults(Stream inputStream, IScenePeerClient remotePeer);
+        Task<Action<Stream,ISerializer>> PostResults(Stream inputStream, IScenePeerClient remotePeer);
+        Task Reset();
     }
 }

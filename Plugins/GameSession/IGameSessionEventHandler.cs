@@ -1,4 +1,5 @@
 ﻿using Stormancer;
+using Stormancer.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,9 +16,19 @@ namespace Server.Plugins.GameSession
         Task GameSessionCompleted(GameSessionCompleteCtx ctx);
     }
 
-    public class GameSessionStartedCtx
+    public class GameSessionContext
     {
-        public GameSessionStartedCtx(IEnumerable<Player> peers)
+        public GameSessionContext(ISceneHost scene)
+        {
+            Scene = scene;
+        }
+
+        public ISceneHost Scene { get; }
+    }
+
+    public class GameSessionStartedCtx : GameSessionContext
+    {
+        public GameSessionStartedCtx(ISceneHost scene, IEnumerable<Player> peers) : base(scene)
         {
             Peers = peers;
         }
@@ -36,14 +47,19 @@ namespace Server.Plugins.GameSession
         public string UserId { get; }
     }
 
-    public class GameSessionCompleteCtx
+    public class GameSessionCompleteCtx : GameSessionContext
     {
-        public GameSessionCompleteCtx(IEnumerable<GameSessionResult> results)
+        public GameSessionCompleteCtx(ISceneHost scene, IEnumerable<GameSessionResult> results, IEnumerable<string> players) : base(scene)
         {
             Results = results;
+            PlayerIds = players;
+            ResultsWriter = (p,s) => { };
         }
 
         public IEnumerable<GameSessionResult> Results { get; }
+
+        public IEnumerable<string> PlayerIds { get; }
+        public Action<Stream, ISerializer> ResultsWriter { get; set; }
     }
 
     public class GameSessionResult

@@ -1,5 +1,6 @@
 ﻿using Server.Plugins.API;
 using Stormancer;
+using Stormancer.Diagnostics;
 using Stormancer.Plugins;
 using System;
 using System.Collections.Generic;
@@ -9,18 +10,32 @@ using System.Threading.Tasks;
 
 namespace Server.Plugins.GameSession
 {
-    class GameSessionController:ControllerBase
+    class GameSessionController : ControllerBase
     {
-        private IGameSessionService _service;
+        private readonly IGameSessionService _service;
+        private readonly ILogger _logger;
 
-        public GameSessionController(IGameSessionService service)
+        public GameSessionController(IGameSessionService service, ILogger logger)
         {
             _service = service;
+            _logger = logger;
         }
-        public Task PostResults(RequestContext<IScenePeerClient> ctx)
+        public async Task PostResults(RequestContext<IScenePeerClient> ctx)
         {
-            return _service.PostResults(ctx.InputStream, ctx.RemotePeer);
+            var writer = await _service.PostResults(ctx.InputStream, ctx.RemotePeer);
+            ctx.SendValue(s =>
+            {
+                var oldPosition = s.Position;
+                writer(s, ctx.RemotePeer.Serializer());
+                //_logger.Log(LogLevel.Trace, "gamesession.postresult", "sending response to postresponse message.", new { Length = s.Position - oldPosition });
+            });
+
         }
-        
+
+        public Task Reset(RequestContext<IScenePeerClient> ctx)
+        {
+            return _service.Reset();
+        }
+
     }
 }

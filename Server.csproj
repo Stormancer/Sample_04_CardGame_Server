@@ -167,6 +167,7 @@
     <Compile Include="Plugins\GameSession\IGameSessionEventHandler.cs" />
     <Compile Include="Plugins\GameSession\IGameSessionService.cs" />
     <Compile Include="Plugins\GameSession\GameSessionsExtensions.cs" />
+    <Compile Include="Plugins\GameSession\PlayerUpdate.cs" />
     <Compile Include="Plugins\GameVersion\App.cs" />
     <Compile Include="Plugins\GameVersion\GameVersionExtensions.cs" />
     <Compile Include="Plugins\GameVersion\GameVersionPlugin.cs" />

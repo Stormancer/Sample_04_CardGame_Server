@@ -17,11 +17,23 @@ namespace Server.Plugins.GameSession
 {
     public enum ServerStatus
     {
-        WaitingPlayers,
-        Starting,
-        Started,
-        Shutdown
+        WaitingPlayers = 0,
+        AllPlayersConnected = 1,
+        Starting = 2,
+        Started = 3,
+        Shutdown = 4,
+        Faulted = 5
     }
+
+    public enum PlayerStatus
+    {
+        NotConnected = 0,
+        Connected = 1,
+        Ready = 2,
+        Faulted = 3,
+        Disconnected = 4
+    }
+
     internal class GameSessionService : IGameSessionService
     {
         private readonly IUserSessions _sessions;
@@ -30,7 +42,7 @@ namespace Server.Plugins.GameSession
         private readonly ISceneHost _scene;
         private readonly IEnvironment _environment;
         private readonly IDelegatedTransports _pools;
-        private readonly IEnumerable<IGameSessionEventHandler> _eventHandlers;
+        private readonly Func<IEnumerable<IGameSessionEventHandler>> _eventHandlers;
 
         private GameSessionConfiguration _config;
 
@@ -40,16 +52,31 @@ namespace Server.Plugins.GameSession
 
         private class Client
         {
+            public Client(IScenePeerClient peer)
+            {
+                Peer = peer;
+                Reset();
+            }
+
+            public void Reset()
+            {
+                GameCompleteTcs?.TrySetCanceled();
+                GameCompleteTcs = new TaskCompletionSource<Action<Stream, ISerializer>>();
+            }
             public IScenePeerClient Peer { get; set; }
 
             public Stream ResultData { get; set; }
 
-            public bool Disconnected { get; set; }
+            public PlayerStatus Status { get; set; }
+
+            public string FaultReason { get; set; }
+
+            public TaskCompletionSource<Action<Stream, ISerializer>> GameCompleteTcs { get; private set; }
         }
         private ConcurrentDictionary<string, Client> _clients = new ConcurrentDictionary<string, Client>();
         private ServerStatus _status;
-         
-        private string _ip;
+
+        private string _ip = "";
         private ushort _port;
 
         public GameSessionService(
@@ -59,7 +86,7 @@ namespace Server.Plugins.GameSession
             IEnvironment environment,
             IDelegatedTransports pools,
             ILogger logger,
-            IEnumerable<IGameSessionEventHandler> eventHandlers)
+            Func<IEnumerable<IGameSessionEventHandler>> eventHandlers)
         {
             _scene = scene;
             _sessions = sessions;
@@ -96,8 +123,83 @@ namespace Server.Plugins.GameSession
                 return Task.FromResult(true);
             });
             scene.Connecting.Add(this.PeerConnecting);
+            scene.Connected.Add(this.PeerConnected);
             scene.Disconnected.Add((args) => this.PeerDisconnecting(args.Peer));
+            scene.AddRoute("player.ready", ReceivedReady, _ => _);
+            scene.AddRoute("player.faulted", ReceivedFaulted, _ => _);
         }
+
+
+        private async Task ReceivedReady(Packet<IScenePeerClient> packet)
+        {
+            var peer = packet.Connection;
+            if (peer == null)
+            {
+                throw new ArgumentNullException("peer");
+            }
+            var user = await _sessions.GetUser(peer);
+
+            if (user == null)
+            {
+                throw new InvalidOperationException("Unauthenticated peer.");
+            }
+
+            Client currentClient;
+            if (!_clients.TryGetValue(user.Id, out currentClient))
+            {
+                throw new InvalidOperationException("Unknown client.");
+            }
+
+            _logger.Log(LogLevel.Trace, "gamesession", "received a ready message from an user.", new { userId = user.Id, currentClient.Status });
+
+            if (currentClient.Status < PlayerStatus.Ready)
+            {
+                currentClient.Status = PlayerStatus.Ready;
+
+                BroadcastClientUpdate(currentClient, user.Id);
+
+                await TryStart();
+            }
+        }
+
+        private void BroadcastClientUpdate(Client client, string userId, string reason = null)
+        {
+            _scene.Broadcast("player.update", new PlayerUpdate { UserId = userId, Status = (byte)client.Status, Reason = reason ?? "" }, PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
+        }
+
+        private async Task ReceivedFaulted(Packet<IScenePeerClient> packet)
+        {
+            var peer = packet.Connection;
+            if (peer == null)
+            {
+                throw new ArgumentNullException("peer");
+            }
+            var user = await _sessions.GetUser(peer);
+
+            if (user == null)
+            {
+                throw new InvalidOperationException("Unauthenticated peer.");
+            }
+
+            Client currentClient;
+            if (!_clients.TryGetValue(user.Id, out currentClient))
+            {
+                throw new InvalidOperationException("Unknown client.");
+            }
+
+            var reason = packet.ReadObject<string>();
+            currentClient.Status = PlayerStatus.Faulted;
+
+            if (this._status == ServerStatus.WaitingPlayers
+                || this._status == ServerStatus.AllPlayersConnected)
+            {
+                this._status = ServerStatus.Faulted;
+
+                // TODO
+            }
+            // TODO
+        }
+
         public void SetConfiguration(dynamic metadata)
         {
             if (metadata.gameSession != null)
@@ -107,7 +209,7 @@ namespace Server.Plugins.GameSession
         }
 
 
-        public async Task PeerConnecting(IScenePeerClient peer)
+        private async Task PeerConnecting(IScenePeerClient peer)
         {
             if (peer == null)
             {
@@ -129,39 +231,62 @@ namespace Server.Plugins.GameSession
                 throw new ClientException("You are not authorized to join this game.");
             }
 
-            if (!_clients.TryAdd(user.Id, new Client { Peer = peer }))
+            var client = new Client(peer);
+
+            if (!_clients.TryAdd(user.Id, client))
             {
                 throw new ClientException("Failed to add player to the game session.");
             }
 
-            _scene.Broadcast("player.joined", user.Id);
+            client.Status = PlayerStatus.Connected;
+            BroadcastClientUpdate(client, user.Id);
+
+        }
+
+
+        private async Task PeerConnected(IScenePeerClient peer)
+        {
+            if (peer == null)
+            {
+                throw new ArgumentNullException("peer");
+            }
+            var user = await _sessions.GetUser(peer);
+
+            if (user == null)
+            {
+                throw new ClientException("You are not authenticated.");
+            }
+
             foreach (var uId in _clients.Keys)
             {
                 if (uId != user.Id)
                 {
-                    peer.Send("player.joined", uId);
+                    var currentClient = _clients[uId];
+                    peer.Send("player.update",
+                        new PlayerUpdate { UserId = uId, Status = (byte)currentClient.Status, Reason = currentClient.FaultReason ?? "" },
+                        PacketPriority.MEDIUM_PRIORITY, PacketReliability.RELIABLE_ORDERED);
                 }
             }
             if (_status == ServerStatus.Started)
             {
                 peer.Send("server.started", new GameServerStartMessage { Ip = _ip, Port = _port });
             }
-            var _ = TryStart();
-
         }
 
         private AsyncLock _lock = new AsyncLock();
+
 
         public async Task TryStart()
         {
             using (await _lock.LockAsync())
             {
-                if (_config.userIds.All(id => _clients.Keys.Contains(id)) && _status == ServerStatus.WaitingPlayers)
+                if (_config.userIds.All(id => _clients.Keys.Contains(id)) && _clients.Values.All(client => client.Status == PlayerStatus.Ready) && _status == ServerStatus.WaitingPlayers)
                 {
                     _status = ServerStatus.Starting;
+                    _logger.Log(LogLevel.Trace, "gamesession", "Starting game session.", new { });
                     await Start();
-                    var ctx = new GameSessionStartedCtx(_clients.Select(kvp => new Player(kvp.Value.Peer, kvp.Key)));
-                    await _eventHandlers.RunEventHandler(eh => eh.GameSessionStarted(ctx), ex => _logger.Log(LogLevel.Error, "gameSession", "An error occured while running gameSession.Started event handlers", ex));
+                    var ctx = new GameSessionStartedCtx(_scene, _clients.Select(kvp => new Player(kvp.Value.Peer, kvp.Key)));
+                    await _eventHandlers()?.RunEventHandler(eh => eh.GameSessionStarted(ctx), ex => _logger.Log(LogLevel.Error, "gameSession", "An error occured while running gameSession.Started event handlers", ex));
                 }
             }
         }
@@ -171,10 +296,11 @@ namespace Server.Plugins.GameSession
             var serverEnabled = ((JToken)_configuration?.Settings?.gameServer) != null;
             var path = (string)_configuration.Settings?.gameServer?.executable;
             var verbose = ((bool?)_configuration.Settings?.gameServer?.verbose) ?? false;
-            var log = ((bool?)_configuration.Settings?.gameServer.log) ?? false;
+            var log = ((bool?)_configuration.Settings?.gameServer?.log) ?? false;
 
             if (!serverEnabled)
             {
+                _logger.Log(LogLevel.Trace, "gamesession", "No server executable enabled. Game session started.", new { });
                 _status = ServerStatus.Started;
                 return;
             }
@@ -297,14 +423,12 @@ namespace Server.Plugins.GameSession
 
             if (user != null)
             {
-
-
                 var client = _clients[user.Id];
                 client.Peer = null;
-                client.Disconnected = true;
+                client.Status = PlayerStatus.Disconnected;
 
-                _scene.Broadcast("player.left", user.Id);
-                EvaluateGameComplete();
+                BroadcastClientUpdate(client, user.Id);
+                await EvaluateGameComplete();
             }
 
             if (!_scene.RemotePeers.Any())
@@ -322,25 +446,49 @@ namespace Server.Plugins.GameSession
             }
 
         }
-
-        public async Task PostResults(Stream inputStream, IScenePeerClient remotePeer)
+        public Task Reset()
         {
-            if(this._status!= ServerStatus.Started)
+            foreach (var client in _clients.Values)
             {
-                throw new ClientException("Unable to post result before game session start.");
+                client.Reset();
+            }
+            return Task.FromResult(true);
+        }
+        public async Task<Action<Stream, ISerializer>> PostResults(Stream inputStream, IScenePeerClient remotePeer)
+        {
+            if (this._status != ServerStatus.Started)
+            {
+                throw new ClientException($"Unable to post result before game session start. Server status is {this._status}");
             }
             var user = await _sessions.GetUser(remotePeer);
+            _clients[user.Id].ResultData = inputStream;
 
-            EvaluateGameComplete();
+            await EvaluateGameComplete();
+            return await _clients[user.Id].GameCompleteTcs.Task;
         }
 
-        private void EvaluateGameComplete()
+        private async Task EvaluateGameComplete()
         {
-            if(_clients.Values.All(c=>c.ResultData !=null))//All remaining clients sent their data!
+            using (await _lock.LockAsync())
             {
-                var ctx = new GameSessionCompleteCtx(_clients.Select(kvp => new GameSessionResult(kvp.Key,kvp.Value.Peer,kvp.Value.ResultData)));
+                if (_clients.Values.All(c => c.ResultData != null || c.Peer == null))//All remaining clients sent their data
+                {
+                    var ctx = new GameSessionCompleteCtx(_scene, _clients.Select(kvp => new GameSessionResult(kvp.Key, kvp.Value.Peer, kvp.Value.ResultData)), _clients.Keys);
 
+                    await _eventHandlers()?.RunEventHandler(eh => eh.GameSessionCompleted(ctx), ex =>
+                    {
+                        _logger.Log(LogLevel.Error, "gameSession", "An error occured while running gameSession.GameSessionCompleted event handlers", ex);
+                        foreach (var client in _clients.Values)
+                        {
+                            client.GameCompleteTcs.TrySetException(ex);
+                        }
+                    });
 
+                    foreach (var client in _clients.Values)
+                    {
+                        client.GameCompleteTcs.TrySetResult(ctx.ResultsWriter);
+                    }
+                }
             }
         }
     }
