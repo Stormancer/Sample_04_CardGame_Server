@@ -232,6 +232,11 @@ namespace Server.Plugins.TurnByTurn
         {
             return Hash.GetHashCode();
         }
+
+        public override string ToString()
+        {
+            return $"{Success}[{Hash}], {Reason}";
+        }
     }
 
     public abstract class TurnSequenceBase
