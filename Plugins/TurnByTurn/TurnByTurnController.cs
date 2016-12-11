@@ -46,6 +46,20 @@ namespace Server.Plugins.TurnByTurn
             await _game.SubmitTransaction(userId, dto.PlayerId, dto.Command, JObject.Parse(dto.Args));
         }
 
+        public async Task AddPlayer(RequestContext<IScenePeerClient> ctx)
+        {
+            var userId = (await _sessions.GetUser(ctx.RemotePeer))?.Id;
+
+            if (userId == null)
+            {
+                throw new ClientException("Authentication required");
+            }
+
+            var dto = ctx.ReadObject<string>();
+            _game.AddPlayer(userId, dto);
+           
+        }
+
 
     }
 
