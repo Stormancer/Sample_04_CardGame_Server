@@ -285,8 +285,11 @@ namespace Server.Plugins.GameSession
                     _status = ServerStatus.Starting;
                     _logger.Log(LogLevel.Trace, "gamesession", "Starting game session.", new { });
                     await Start();
+                   
                     var ctx = new GameSessionStartedCtx(_scene, _clients.Select(kvp => new Player(kvp.Value.Peer, kvp.Key)));
                     await _eventHandlers()?.RunEventHandler(eh => eh.GameSessionStarted(ctx), ex => _logger.Log(LogLevel.Error, "gameSession", "An error occured while running gameSession.Started event handlers", ex));
+
+                    _scene.Broadcast("server.started", new GameServerStartMessage { Ip = _ip, Port = _port });
                 }
             }
         }
@@ -301,7 +304,7 @@ namespace Server.Plugins.GameSession
             if (!serverEnabled)
             {
                 _logger.Log(LogLevel.Trace, "gamesession", "No server executable enabled. Game session started.", new { });
-                _scene.Broadcast("server.started", new GameServerStartMessage { Ip = _ip, Port = _port });
+               
                 _status = ServerStatus.Started;
                 return;
             }
@@ -324,9 +327,9 @@ namespace Server.Plugins.GameSession
                         await Task.Delay(TimeSpan.FromSeconds(5));
 
                         _status = ServerStatus.Started;
-                        var gameStartMessage = new GameServerStartMessage { Ip = _ip, Port = _port };
-                        _logger.Log(LogLevel.Trace, "gameserver", "Dummy server started, sending server.started message to connected players.", gameStartMessage);
-                        _scene.Broadcast("server.started", gameStartMessage);
+
+                        _logger.Log(LogLevel.Trace, "gameserver", "Dummy server started, sending server.started message to connected players.", new { });
+                       
                     }
                     catch (Exception ex)
                     {
@@ -357,7 +360,7 @@ namespace Server.Plugins.GameSession
                     if (args.Data?.ToLowerInvariant().Contains("server is ready") == true)
                     {
                         _logger.Log(LogLevel.Trace, "gameserver", "Server responded as ready.", new { Port = _port });
-                        _scene.Broadcast("server.started", new GameServerStartMessage { Ip = _ip, Port = _port });
+                       
                         _status = ServerStatus.Started;
                     }
 
@@ -384,7 +387,6 @@ namespace Server.Plugins.GameSession
 
                 await Task.Delay(TimeSpan.FromSeconds(3));
                 _logger.Log(LogLevel.Trace, "gameserver", "Waited 3 seconds for server to start, sending server.started to players.", new { Port = _port });
-                _scene.Broadcast("server.started", new GameServerStartMessage { Ip = _ip, Port = _port });
                 _status = ServerStatus.Started;
             }
             catch (InvalidOperationException ex)
@@ -395,6 +397,7 @@ namespace Server.Plugins.GameSession
                 {
                     await client.Peer.Disconnect("Game server stopped");
                 }
+                throw;
             }
         }
 
