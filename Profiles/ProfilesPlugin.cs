@@ -13,6 +13,7 @@ using Stormancer;
 using Stormancer.Diagnostics;
 using Stormancer.Core;
 using Server.Plugins.TurnByTurn;
+using Server.Plugins.GameSession;
 
 namespace Server.Profiles
 {
@@ -30,7 +31,7 @@ namespace Server.Profiles
               {
                   if(scene.Metadata.ContainsKey(TurnByTurnPlugin.METADATA_KEY))
                   {
-                      builder.Register<GameSessionEventHandler>().InstancePerScene();
+                      builder.Register<GameSessionEventHandler>().As<IGameSessionEventHandler>().InstancePerScene();
                   }
               };
 
