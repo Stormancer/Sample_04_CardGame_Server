@@ -287,7 +287,9 @@ namespace Server.Plugins.GameSession
                     await Start();
                    
                     var ctx = new GameSessionStartedCtx(_scene, _clients.Select(kvp => new Player(kvp.Value.Peer, kvp.Key)));
-                    await _eventHandlers()?.RunEventHandler(eh => eh.GameSessionStarted(ctx), ex => _logger.Log(LogLevel.Error, "gameSession", "An error occured while running gameSession.Started event handlers", ex));
+                    var handlers = _eventHandlers();
+                    _logger.Log(LogLevel.Info, "gameSession", "Invoking GameStarted", new { h = handlers.Select(h => h.GetType().ToString()) });
+                    await handlers?.RunEventHandler(eh => eh.GameSessionStarted(ctx), ex => _logger.Log(LogLevel.Error, "gameSession", "An error occured while running gameSession.Started event handlers", ex));
 
                     _scene.Broadcast("server.started", new GameServerStartMessage { Ip = _ip, Port = _port });
                 }
