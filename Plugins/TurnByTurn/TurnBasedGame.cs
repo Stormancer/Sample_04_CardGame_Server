@@ -147,20 +147,20 @@ namespace Server.Plugins.TurnByTurn
                         }
                         catch (Exception)//Failed to execute transaction update on client
                         {
-                            response =  new TransactionResponse { Success = false };
+                            response = new TransactionResponse { Success = false };
                         }
                     }
                     return Tuple.Create(p.Key, response);
                 }));
                 var receivedResponses = responses.Where(t => t.Item2 != null);
-                var isValid = receivedResponses.All(t=>t.Item2.Success) && receivedResponses.Select(t => t.Item2).Distinct().Count() == 1;
+                var isValid = receivedResponses.All(t => t.Item2.Success) && receivedResponses.Select(t => t.Item2).Distinct().Count() == 1;
 
                 if (!isValid)
                 {
                     await EnsureTransactionFailed($"game states hash comparaison failed: [{string.Join(", ", responses.Select(t => $"'{t.Item1}' => {t.Item2}"))}]");
                 }
-
-                _commands.Add(new TransactionLogItem { Command = cmd, ResultHash = responses.FirstOrDefault(r => r.Item2!=null)?.Item2.Hash ?? 0 });
+                var hash = responses.FirstOrDefault(r => r.Item2 != null)?.Item2.Hash;
+                _commands.Add(new TransactionLogItem { Command = cmd, ResultHash = hash ?? 0, HashAvailable = hash.HasValue  });
 
 
             }
@@ -186,9 +186,14 @@ namespace Server.Plugins.TurnByTurn
 
     public class TransactionLogItem
     {
+        [MessagePackMember(0)]
         public TransactionCommand Command { get; set; }
 
+        [MessagePackMember(1)]
         public int ResultHash { get; set; }
+
+        [MessagePackMember(2)]
+        public bool HashAvailable { get; set; }
     }
     public class TransactionCommand
     {
