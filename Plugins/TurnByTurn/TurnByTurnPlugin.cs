@@ -37,6 +37,7 @@ namespace Server.Plugins.TurnByTurn
                  if (scene.Metadata.ContainsKey(METADATA_KEY))
                  {
                      scene.AddController<TransactionController>();
+                     scene.DependencyResolver.Resolve<TurnBasedGame>();
                      
                  }
              };
