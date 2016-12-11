@@ -301,6 +301,7 @@ namespace Server.Plugins.GameSession
             if (!serverEnabled)
             {
                 _logger.Log(LogLevel.Trace, "gamesession", "No server executable enabled. Game session started.", new { });
+                _scene.Broadcast("server.started", new GameServerStartMessage { Ip = _ip, Port = _port });
                 _status = ServerStatus.Started;
                 return;
             }
