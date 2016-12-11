@@ -45,6 +45,7 @@ namespace Server.Plugins.TurnByTurn
 
         private async Task OnConnected(IScenePeerClient client)
         {
+            _logger.Log(LogLevel.Debug, "gameSession", "client connected",new { });
             var user = await _sessions.GetUser(client);
             if (user == null)
             {
@@ -131,15 +132,17 @@ namespace Server.Plugins.TurnByTurn
         {
             using (await _transactionLock.LockAsync())
             {
-
+                _logger.Log(LogLevel.Debug, "gameSession", "Transaction submitted.", new
+                {
+                    map = PlayerMap,
+                    players = _players.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Id),
+                    Cmd = cmd
+                });
                 var responses = await Task.WhenAll(PlayerMap.Select(async p =>
                 {
                     IScenePeerClient peer = null;
                     _players.TryGetValue(p.Value, out peer);
-                    _logger.Log(LogLevel.Debug, "gameSession", "Transaction submitted.", new {
-                        map = PlayerMap,
-                        players = _players.ToDictionary(kvp=>kvp.Key, kvp=>kvp.Value.Id)
-                    });
+                    
                     TransactionResponse response = null;
                     if (peer != null)
                     {
