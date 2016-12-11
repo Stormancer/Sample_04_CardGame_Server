@@ -22,7 +22,7 @@ namespace Server
         public void Run(IAppBuilder builder)
         {
             builder.AddPlugin(new ConfigurationManagerPlugin());
-
+            builder.AddPlugin(new ProfilesPlugin());
             builder.AddPlugin(new SteamPlugin());
 
             
