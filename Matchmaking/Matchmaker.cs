@@ -266,6 +266,11 @@ namespace Sample.Server.Matchmaking
             var firstData = (MatchmakingGroupData)first.GroupData;
             var secondData = (MatchmakingGroupData)second.GroupData;
 
+            if (firstData.Request?.Filter != secondData.Request.Filter)
+            {
+                return false;
+            }
+
             var maxEloRange = _eloRange + Math.Min(firstData.PastMatchmakingPasses, secondData.PastMatchmakingPasses) * _eloRangeDelta;
 
             //Region must match

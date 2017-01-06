@@ -9,12 +9,7 @@ namespace Server.Matchmaking.Dto
 {
     public class MatchmakingRequest
     {
-        /// <summary>
-        /// membres du groupe présentés sous la forme [userId]=>[profileId]
-        /// </summary>
         [MessagePackMember(0)]
-        public string gameMode { get; set; }
-        
-      
+        public string Filter { get; set; }
     }
 }
