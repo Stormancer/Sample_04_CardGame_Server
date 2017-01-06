@@ -266,7 +266,7 @@ namespace Sample.Server.Matchmaking
             var firstData = (MatchmakingGroupData)first.GroupData;
             var secondData = (MatchmakingGroupData)second.GroupData;
 
-            if (firstData.Request?.Filter != secondData.Request.Filter)
+            if (firstData.Request?.Filter != secondData.Request?.Filter)
             {
                 return false;
             }
